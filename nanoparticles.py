@@ -6,11 +6,12 @@ of possible radii to find the best match.
 # Author: Guillaume Witz, Science IT Support, Bern University, 2019
 # License: MIT License
 
-import glob
+import glob, os
 import numpy as np
 import skimage
 import skimage.feature
 import matplotlib.pyplot as plt
+import pandas as pd
 
 
 def create_disk_template(radius, image_size):
@@ -183,12 +184,15 @@ def analyze_particles(path_to_data, min_rad, max_rad, scale):
     tif_files = glob.glob(path_to_data+'/*tif')
     all_radii = []
     for tif in tif_files:
-        image = skimage.io.imread(tif_files[0])
-        image = image[:,:,1]+0.001
+        image = skimage.io.imread(tif)
+        if len(image.shape)==3:
+            image = image[:,:,1]+0.001
         im_filt = init_filtering(image, np.arange(min_rad, max_rad,10))
         radii, circles = muli_radius_fitting(image, im_filt, min_rad, max_rad)
         plot_detection(image, circles, radii, scale)
-        all_radii = all_radii+radii
+        pd_temp = pd.DataFrame({'radii': radii, 'filename': os.path.basename(tif)})
+        all_radii.append(pd_temp)
+    all_radii = pd.concat(all_radii)
     return all_radii
 
 
