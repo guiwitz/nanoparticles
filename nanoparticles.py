@@ -190,7 +190,7 @@ def analyze_particles(path_to_data, min_rad, max_rad, scale):
         im_filt = init_filtering(image, np.arange(min_rad, max_rad,10))
         radii, circles = muli_radius_fitting(image, im_filt, min_rad, max_rad)
         plot_detection(image, circles, radii, scale)
-        pd_temp = pd.DataFrame({'radii': radii, 'filename': os.path.basename(tif)})
+        pd_temp = pd.DataFrame({'radii': np.array(radii)*scale, 'filename': os.path.basename(tif)})
         all_radii.append(pd_temp)
     all_radii = pd.concat(all_radii)
     return all_radii
