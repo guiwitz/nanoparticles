@@ -123,6 +123,8 @@ def muli_radius_fitting(image, im_filt, minrad, maxrad, match_quality = 0.2):
         mesuread radii
     circles: list
         list of triplet with x,y and radius of detected particles
+    intensities: list
+        list of average intensity of each particle
     
     """
     #minrad = 30
@@ -138,6 +140,7 @@ def muli_radius_fitting(image, im_filt, minrad, maxrad, match_quality = 0.2):
 
     all_radii = []
     circles = []
+    intensities = []
     for particle_loc in local_max_indices:
         if (particle_loc[0]-image_halft_size>0)&(particle_loc[0]+image_halft_size<im_filt.shape[0])&\
         (particle_loc[1]-image_halft_size>0)&(particle_loc[1]+image_halft_size<im_filt.shape[1]):
@@ -159,11 +162,17 @@ def muli_radius_fitting(image, im_filt, minrad, maxrad, match_quality = 0.2):
             all_radii.append(fit_rad)
             templ = create_disk_template(int(fit_rad), image_size)
             templ = np.roll(np.roll(templ,fit_shift_x,axis=0),fit_shift_y,axis = 1)
-
+            
+            #calculate mean intensity of each particle
+            masked_sum = np.sum(image[particle_loc[0]-image_halft_size:particle_loc[0]+image_halft_size+1,
+                   particle_loc[1]-image_halft_size:particle_loc[1]+image_halft_size+1]*templ)
+            intensities.append(masked_sum/np.sum(templ))
+            #create a maks of all particls
             mask[particle_loc[0]-image_halft_size:particle_loc[0]+image_halft_size+1,
                    particle_loc[1]-image_halft_size:particle_loc[1]+image_halft_size+1]+=templ
+            #recover location of all particles
             circles.append([particle_loc[0]+fit_shift_x,particle_loc[1]+fit_shift_y,fit_rad])
-    return all_radii, circles
+    return all_radii, circles, intensities
 
 def analyze_particles(path_to_data, min_rad, max_rad, scale, match_quality = 0.2):
     """Main function analyzing particles size in EM images
@@ -194,9 +203,9 @@ def analyze_particles(path_to_data, min_rad, max_rad, scale, match_quality = 0.2
         if len(image.shape)==3:
             image = image[:,:,1]+0.001
         im_filt = init_filtering(image, np.arange(min_rad, max_rad,10))
-        radii, circles = muli_radius_fitting(image, im_filt, min_rad, max_rad, match_quality)
+        radii, circles, intensities = muli_radius_fitting(image, im_filt, min_rad, max_rad, match_quality)
         plot_detection(image, circles, radii, scale)
-        pd_temp = pd.DataFrame({'radii': radii, 'filename': os.path.basename(tif)})
+        pd_temp = pd.DataFrame({'radii': radii,'intensities': intensities, 'filename': os.path.basename(tif)})
         all_radii.append(pd_temp)
     all_radii = pd.concat(all_radii)
     return all_radii
