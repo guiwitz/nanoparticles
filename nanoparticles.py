@@ -101,7 +101,7 @@ def init_filtering(image, radii):
     return im_filt
 
 
-def muli_radius_fitting(image, im_filt, minrad, maxrad):
+def muli_radius_fitting(image, im_filt, minrad, maxrad, match_quality = 0.2):
     """Create a disk image
     
     Parameters
@@ -114,6 +114,8 @@ def muli_radius_fitting(image, im_filt, minrad, maxrad):
         minimum radius to consider
     maxrad: int
         maximum radius to consider
+    match_quality: float
+        threshold on matching quality. 0 means all local maxima are selected
     
     Returns
     -------
@@ -126,20 +128,22 @@ def muli_radius_fitting(image, im_filt, minrad, maxrad):
     #minrad = 30
     #maxrad = 80
     image_size = 2*maxrad+41#201
+    image_halft_size = int((image_size-1)/2)
     all_templates = create_templates(minrad, maxrad, image_size)
 
-    local_max_indices = skimage.feature.peak_local_max(im_filt, min_distance=100,indices=True, threshold_abs = 0.2)
+    local_max_indices = skimage.feature.peak_local_max(im_filt, min_distance=int(0.6*maxrad),indices=True, 
+                                                       threshold_abs = match_quality)
 
     mask = np.zeros(im_filt.shape)
 
     all_radii = []
     circles = []
     for particle_loc in local_max_indices:
-        if (particle_loc[0]-100>0)&(particle_loc[0]+100<im_filt.shape[0])&\
-        (particle_loc[1]-100>0)&(particle_loc[1]+100<im_filt.shape[1]):
+        if (particle_loc[0]-image_halft_size>0)&(particle_loc[0]+image_halft_size<im_filt.shape[0])&\
+        (particle_loc[1]-image_halft_size>0)&(particle_loc[1]+image_halft_size<im_filt.shape[1]):
 
-            sub_im = image[particle_loc[0]-100:particle_loc[0]+101,
-                   particle_loc[1]-100:particle_loc[1]+101]
+            sub_im = image[particle_loc[0]-image_halft_size:particle_loc[0]+image_halft_size+1,
+                   particle_loc[1]-image_halft_size:particle_loc[1]+image_halft_size+1]
 
             im_norm = sub_im-np.mean(sub_im)
             im_norm = im_norm/np.sqrt(np.sum(im_norm*im_norm))
@@ -153,15 +157,15 @@ def muli_radius_fitting(image, im_filt, minrad, maxrad):
             fit_shift_x = int(products[pos_max,1])
             fit_shift_y = int(products[pos_max,2])
             all_radii.append(fit_rad)
-            templ = create_disk_template(int(fit_rad), 201)
+            templ = create_disk_template(int(fit_rad), image_size)
             templ = np.roll(np.roll(templ,fit_shift_x,axis=0),fit_shift_y,axis = 1)
 
-            mask[particle_loc[0]-100:particle_loc[0]+101,
-                   particle_loc[1]-100:particle_loc[1]+101]+=templ
+            mask[particle_loc[0]-image_halft_size:particle_loc[0]+image_halft_size+1,
+                   particle_loc[1]-image_halft_size:particle_loc[1]+image_halft_size+1]+=templ
             circles.append([particle_loc[0]+fit_shift_x,particle_loc[1]+fit_shift_y,fit_rad])
     return all_radii, circles
 
-def analyze_particles(path_to_data, min_rad, max_rad, scale):
+def analyze_particles(path_to_data, min_rad, max_rad, scale, match_quality = 0.2):
     """Main function analyzing particles size in EM images
     
     Parameters
@@ -174,6 +178,8 @@ def analyze_particles(path_to_data, min_rad, max_rad, scale):
         maximum radius to consider
     scale: float
         image scale (in nanometer per pixel)
+    match_quality: float
+        threshold on matching quality. 0 means all local maxima are selected
     
     Returns
     -------
@@ -188,9 +194,9 @@ def analyze_particles(path_to_data, min_rad, max_rad, scale):
         if len(image.shape)==3:
             image = image[:,:,1]+0.001
         im_filt = init_filtering(image, np.arange(min_rad, max_rad,10))
-        radii, circles = muli_radius_fitting(image, im_filt, min_rad, max_rad)
+        radii, circles = muli_radius_fitting(image, im_filt, min_rad, max_rad, match_quality)
         plot_detection(image, circles, radii, scale)
-        pd_temp = pd.DataFrame({'radii': np.array(radii)*scale, 'filename': os.path.basename(tif)})
+        pd_temp = pd.DataFrame({'radii': radii, 'filename': os.path.basename(tif)})
         all_radii.append(pd_temp)
     all_radii = pd.concat(all_radii)
     return all_radii
@@ -224,7 +230,7 @@ def plot_detection(image, circles, radii, scale):
         ax[0].add_artist(plot_circ)
     ax[0].set_axis_off()
     
-    ax[1].hist(np.array(radii)*0.0001589*1000, bins = np.arange(20,80,2)*scale)
+    ax[1].hist(np.array(radii)*scale, bins = np.arange(20,80,2)*scale)
     ax[1].set_xlabel('Radius [nm]')
     plt.show()
 
