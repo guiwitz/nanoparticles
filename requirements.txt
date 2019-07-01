@@ -3,3 +3,4 @@ matplotlib
 scikit-image
 pandas
 ipywidgets
+jupyter_contrib_nbextensions
