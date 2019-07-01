@@ -2,3 +2,10 @@ channels:
   - conda-forge
 dependencies:
   - appmode
+  - numpy
+  - matplotlib
+  - scikit-image
+  - pandas
+  - ipywidgets
+  - jupyter_contrib_nbextensions
+
