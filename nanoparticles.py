@@ -157,8 +157,12 @@ def muli_radius_fitting(image, im_filt, minrad, maxrad, match_quality = 0.2):
             im_norm = sub_im-np.mean(sub_im)
             im_norm = im_norm/np.sqrt(np.sum(im_norm*im_norm))
 
+            #products = [[all_templates[ind]['radius'],all_templates[ind]['shift_x'],all_templates[ind]['shift_y'],
+            #             np.sqrt(np.abs(np.sum(all_templates[ind]['template']*im_norm)))] for ind in range(len(all_templates))]
+            
             products = [[all_templates[ind]['radius'],all_templates[ind]['shift_x'],all_templates[ind]['shift_y'],
-                         np.sqrt(np.abs(np.sum(all_templates[ind]['template']*im_norm)))] for ind in range(len(all_templates))]
+                         np.sum(all_templates[ind]['template']*im_norm)] for ind in range(len(all_templates))]
+            
             products = np.array(products)
 
             pos_max = np.argmax(products[:,3])
