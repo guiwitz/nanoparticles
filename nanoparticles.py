@@ -12,6 +12,12 @@ import skimage
 import skimage.feature
 import matplotlib.pyplot as plt
 import pandas as pd
+from matplotlib.font_manager import FontProperties
+
+plt.style.use('ggplot')
+font = FontProperties()
+font.set_style('normal')
+font.set_size(15)
 
 
 def create_disk_template(radius, image_size):
@@ -152,7 +158,7 @@ def muli_radius_fitting(image, im_filt, minrad, maxrad, match_quality = 0.2):
             im_norm = im_norm/np.sqrt(np.sum(im_norm*im_norm))
 
             products = [[all_templates[ind]['radius'],all_templates[ind]['shift_x'],all_templates[ind]['shift_y'],
-                         np.sqrt(np.sum(all_templates[ind]['template']*im_norm))] for ind in range(len(all_templates))]
+                         np.sqrt(np.abs(np.sum(all_templates[ind]['template']*im_norm)))] for ind in range(len(all_templates))]
             products = np.array(products)
 
             pos_max = np.argmax(products[:,3])
@@ -174,7 +180,7 @@ def muli_radius_fitting(image, im_filt, minrad, maxrad, match_quality = 0.2):
             circles.append([particle_loc[0]+fit_shift_x,particle_loc[1]+fit_shift_y,fit_rad])
     return all_radii, circles, intensities
 
-def analyze_particles(path_to_data, min_rad, max_rad, scale, match_quality = 0.2):
+def analyze_particles(path_to_data, min_rad, max_rad, scale, match_quality = 0.2, single_image = False):
     """Main function analyzing particles size in EM images
     
     Parameters
@@ -197,6 +203,9 @@ def analyze_particles(path_to_data, min_rad, max_rad, scale, match_quality = 0.2
     
     """
     tif_files = glob.glob(path_to_data+'/*tif')
+    if single_image:
+        tif_files = tif_files[0:1]
+        
     all_radii = []
     for tif in tif_files:
         image = skimage.io.imread(tif)
@@ -232,14 +241,18 @@ def plot_detection(image, circles, radii, scale):
     """
     
     fig, ax = plt.subplots(1,2,figsize=(15,7))
-    ax[0].imshow(image)
+    ax[0].imshow(image, cmap = 'gray')
 
-    for x in circles:
-        plot_circ = plt.Circle((x[1], x[0]), x[2], color='r', faceColor = [1,1,1,0])
-        ax[0].add_artist(plot_circ)
-    ax[0].set_axis_off()
+    if len(circles) > 0:
+        for x in circles:
+            plot_circ = plt.Circle((x[1], x[0]), x[2], color='r', linewidth = 1, faceColor = [1,1,1,0])
+            ax[0].add_artist(plot_circ)
+        ax[0].set_axis_off()
     
-    ax[1].hist(np.array(radii)*scale, bins = np.arange(20,80,2)*scale)
-    ax[1].set_xlabel('Radius [nm]')
+    if len(radii) > 0:
+        ax[1].hist(np.array(radii)*scale, bins = np.arange(20,80,2)*scale)
+        ax[1].set_xlabel('Radius [nm]',fontproperties = font)
+        ax[1].set_ylabel('Count',fontproperties = font)
+        ax[1].tick_params(labelsize=12)
     plt.show()
 
